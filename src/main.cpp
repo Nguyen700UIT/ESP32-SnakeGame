@@ -125,13 +125,15 @@ void move()
             headX+=2;
             break;
     }
-    
+    if (headX < 0) headX = SCREEN_WIDTH - 1; else if (headX >= SCREEN_WIDTH) headX = 0;
+    if (headY < 0) headY = SCREEN_HEIGHT - 1; else if (headX >= SCREEN_HEIGHT) headY = 0;
+
 }
 
 void isGameOver()
 {
-    if(headX < 0 || headX >= SCREEN_WIDTH || headY < 0 || headY >= SCREEN_HEIGHT)
-        gameOver = true;
+    //if(headX < 0 || headX >= SCREEN_WIDTH || headY < 0 || headY >= SCREEN_HEIGHT)
+    //    gameOver = true;
     for (int i = 0; i < nTail - 1; ++i)
     {
         if (headX == tailX[i] && headY == tailY[i]) 
