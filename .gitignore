@@ -1,0 +1,8 @@
+#PlatformIO file
+.pio/
+#VScode file
+.vscode/
+#Build file
+*.bin
+*.elf
+*.map
