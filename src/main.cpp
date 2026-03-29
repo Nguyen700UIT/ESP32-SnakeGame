@@ -1,208 +1,111 @@
 #include <Arduino.h>
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <display.h>
+#include <snake_game.h>
+#include <config.h>
 
-// OLED configuration
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+void IRAM_ATTR upISR() {
+  if(gameOver) return;
+  unsigned long currInterrruptTime = millis();
+  if (currInterrruptTime - lastInterruptTime[0] > 100) {
+    isUp = true;
+    lastInterruptTime[0] = currInterrruptTime;
+  }
+}
 
-// Button pins
-#define UP 4    // Player UP
-#define DOWN 5  // Player DOWN
-#define LEFT 16
-#define RIGHT 17
-#define RESET 13
+void IRAM_ATTR downISR() {
+  if(gameOver) return;
+  unsigned long currInterrruptTime = millis();
+  if (currInterrruptTime - lastInterruptTime[1] > 100) {
+    isDown = true;
+    lastInterruptTime[1] = currInterrruptTime;
+  }
+}
 
-enum direction {stop = 0, up, down, left, right};
+void IRAM_ATTR leftISR() {
+  if(gameOver) return;
+  unsigned long currInterrruptTime = millis();
+  if (currInterrruptTime - lastInterruptTime[2] > 100) {
+    isLeft = true;
+    lastInterruptTime[2] = currInterrruptTime;
+  }
+}
 
+void IRAM_ATTR rightISR() {
+  if(gameOver) return;
+  unsigned long currInterrruptTime = millis();
+  if (currInterrruptTime - lastInterruptTime[3] > 100) {
+    isRight = true;
+    lastInterruptTime[3] = currInterrruptTime;
+  }
+}
 
-//Game 
-bool gameOver = false;
-const int moveDelay = 50;
-int prevTime = 0;
-int currTime = 0;
-//Snake
-int headX = 64;
-int headY = 32;
-direction snakeDir = stop;
-int nTail = 1;
-int tailX[100];
-int tailY[100];
-
-
-//Bait
-int baitX;
-int baitY;
-
-void baitSetup()
-{
-    baitX = random(0, SCREEN_WIDTH);
-    baitY = random(0, SCREEN_HEIGHT);
+void IRAM_ATTR resetISR() {
+  unsigned long currInterruptTime = millis();
+  if(currInterruptTime - lastResetInterruptTime > 100) {
+    reseted = true;
+    lastResetInterruptTime = currInterruptTime;
+  }
 }
 
 void setup() {
-    Serial.begin(115200);
-  
+    Serial.begin(9600);
     // Initialize buttons
     pinMode(UP, INPUT_PULLUP);
     pinMode(DOWN, INPUT_PULLUP);
     pinMode(LEFT, INPUT_PULLUP);
     pinMode(RIGHT, INPUT_PULLUP);
     pinMode(RESET, INPUT_PULLUP);
+    
+    // Attach Interrupts
+    attachInterrupt(UP, upISR, FALLING);
+    attachInterrupt(DOWN, downISR, FALLING);
+    attachInterrupt(LEFT, leftISR, FALLING);
+    attachInterrupt(RIGHT, rightISR, FALLING);
+    attachInterrupt(RESET, resetISR, FALLING);
 
-    // Initialize OLED
-    Wire.begin(21, 22); // SDA, SCL
-    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-        Serial.println("SSD1306 allocation failed");
-        while(true);
-    }
+    initDisplay();
+    Serial.println("TFT Display initialized");
 
-    display.clearDisplay();
-    display.display();
-    Serial.println("Display initialized at 0x3C");
-    baitSetup();
-}
-
-// Reset snake to normal state
-void resetSnake() {
-    headX = 64;
-    headY = 32;
-    nTail = 1;
-}
-
-
-
-void readDirection()
-{
-    if (digitalRead(UP) == LOW)
-    {
-        snakeDir = up;
-    }
-    else if (digitalRead(DOWN) == LOW)
-    {
-        snakeDir = down;
-    }
-    else if (digitalRead(LEFT) == LOW)
-    {
-        snakeDir = left;
-    }
-    else if (digitalRead(RIGHT) == LOW)
-    {
-        snakeDir = right;
-    }
-}
-
-void move()
-{
-    int prevX = tailX[0];
-    int prevY = tailY[0];
-    tailX[0] = headX;
-    tailY[0] = headY;
-    int tempX, tempY;
-    for (int i = 1; i < nTail; ++i)
-    {
-        tempX = tailX[i];
-        tempY = tailY[i];
-        tailX[i] = prevX;
-        tailY[i] = prevY;
-        prevX = tempX;
-        prevY = tempY;
-    }
-    switch(snakeDir)
-    {
-        case up:
-            headY-=2;
-            break;
-        case down:
-            headY+=2;
-            break;
-        case left:
-            headX-=2;
-            break;
-        case right:
-            headX+=2;
-            break;
-    }
-    if (headX < 0) headX = SCREEN_WIDTH - 1; else if (headX >= SCREEN_WIDTH) headX = 0;
-    if (headY < 0) headY = SCREEN_HEIGHT - 1; else if (headX >= SCREEN_HEIGHT) headY = 0;
-
-}
-
-void isGameOver()
-{
-    //if(headX < 0 || headX >= SCREEN_WIDTH || headY < 0 || headY >= SCREEN_HEIGHT)
-    //    gameOver = true;
-    for (int i = 0; i < nTail - 1; ++i)
-    {
-        if (headX == tailX[i] && headY == tailY[i]) 
-        gameOver = true;
-    }
-}
-
-void eat()
-{
-    if (headX >= baitX  && headX <= baitX + 4 && headY >= baitY && headY <= baitY + 4)
-    {
-        nTail++;
-        baitSetup();
-    }
-}
-
-void drawSnake()
-{
-    //Draw head
-    display.drawRect(headX, headY, 4, 4, SSD1306_WHITE);
-
-    //Draw tail
-    for(int i = 0; i < nTail - 1; i++)
-    {
-        display.fillRect(tailX[i], tailY[i], 2, 2, SSD1306_WHITE);
-    }
-
-    // Draw bait
-    display.fillRect(baitX, baitY, 4, 4, SSD1306_WHITE);
+    gameReset(); // Khởi tạo toàn bộ Game
 }
 
 void loop() {
     currTime = millis();
+
     if(!gameOver)
     {
+        // Prevent future reset flag lingering
+        if (reseted) reseted = false;
         if(currTime - prevTime > moveDelay)
         {   
             prevTime = currTime;
-            readDirection();
-            move();
-            eat();
+            
+            readDirection(); 
+            move();         
+            eat();           
+            isGameOver();   
+            
+            // Xử lý điểm số
+            score = (nTail - 1) * 10;
+            if (score != prevScore) {
+                drawScore();
+                prevScore = score;
+            }
+
+            renderBoard();  
         }
-        display.clearDisplay();
-        drawSnake();
-        display.display();
-        isGameOver();
-        
     }
-    else if (gameOver)
+    else
     {
-        display.clearDisplay();
-        display.setTextSize(2);
-        display.setTextColor(SSD1306_WHITE);
-        display.setCursor(15, 20);
-        display.println("GAME OVER");
-        
-        display.setTextSize(1);
-        display.setCursor(30, 45);
-        display.print("Score: ");
-        display.println(nTail*10);
-        display.display();
-    }
+        // Chết thì vẽ UI Game Over (có chốt khóa chống chớp bên trong hàm)
+        drawGameOverUI();
 
-    if(digitalRead(RESET) == LOW)
-    {
-        gameOver = false;
-        resetSnake();
+        // Đợi người chơi bấm Reset
+        if (reseted) {
+            gameReset();
+            reseted = false;
+        }
     }
-
 }
 
 
