@@ -8,6 +8,7 @@ unsigned long prevTime = 0;
 unsigned long currTime = 0;
 int prevScore = -1;
 int score = 0;
+bool drewGameOverUI = false;
 Bait bait;
 const uint8_t baitBmp[8] PROGMEM = {0x18, 0x10, 0x7e, 0xff, 0xff, 0xfb, 0x7e, 0x3c};
 const uint8_t headUp[8] PROGMEM = {0x00, 0x18, 0x3c, 0x7e, 0x7e, 0x5a, 0x7e, 0x7e};
@@ -22,8 +23,27 @@ void initBait()
     // x, y must be even cause BLOCK_SIZE = 8
     int maxCol = SNAKE_BOARD_WIDTH / SNAKE_BLOCK_SIZE;
     int maxRow = SNAKE_BOARD_HEIGHT / SNAKE_BLOCK_SIZE;
-    bait.x = random(0, maxCol) * SNAKE_BLOCK_SIZE;
-    bait.y = random(0, maxRow) * SNAKE_BLOCK_SIZE;
+    bool valid = false;
+
+    while(!valid)
+    {
+        valid = true;
+        bait.x = random(0, maxCol) * SNAKE_BLOCK_SIZE;
+        bait.y = random(0, maxRow) * SNAKE_BLOCK_SIZE;
+        if(headX == bait.x && headY == bait.y)
+        {
+            valid = false;
+            continue;
+        }
+        for (int i = 0; i < nTail; ++i)
+        {
+            if(tailX[i] == bait.x && tailY[i] == bait.y)
+            {
+                valid = false;
+                break;
+            }
+        }
+    }
 }
 
 // Reset snake to normal state
@@ -57,6 +77,8 @@ void readDirection()
 
 void move()
 {
+    prevTailX = tailX[nTail-1];
+    prevTailY = tailY[nTail-1];
     int prevX = tailX[0];
     int prevY = tailY[0];
     tailX[0] = headX;
@@ -86,51 +108,62 @@ void move()
             headX+=SNAKE_BLOCK_SIZE;
             break;
     }
-    if (headX < 0) headX = SNAKE_BOARD_WIDTH - SNAKE_BLOCK_SIZE; else if (headX >= SNAKE_BOARD_WIDTH) headX = 0;
-    if (headY < 0) headY = SNAKE_BOARD_HEIGHT - SNAKE_BLOCK_SIZE; else if (headY >= SNAKE_BOARD_HEIGHT) headY = 0;
+    // if (headX < 0) headX = SNAKE_BOARD_WIDTH - SNAKE_BLOCK_SIZE; else if (headX >= SNAKE_BOARD_WIDTH) headX = 0;
+    // if (headY < 0) headY = SNAKE_BOARD_HEIGHT - SNAKE_BLOCK_SIZE; else if (headY >= SNAKE_BOARD_HEIGHT) headY = 0;
 
 }
 
 void isGameOver()
 {
-    //if(headX < 0 || headX >= SCREEN_WIDTH || headY < 0 || headY >= SCREEN_HEIGHT)
-    //    gameOver = true;
+    if(headX < 0 || headX >= SNAKE_BOARD_WIDTH || headY < 0 || headY >= SNAKE_BOARD_HEIGHT)
+       gameOver = true;
     for (int i = 0; i < nTail - 1; ++i)
     {
         if (headX == tailX[i] && headY == tailY[i]) 
-        gameOver = true;
+        {
+            gameOver = true;
+            break;
+        }
     }
 }
 
-void eat()
+bool eat()
 {
-    if (headX == bait.x && headY == bait.y) {
+    if (headX == bait.x && headY == bait.y) 
+    { 
+        tft_snake.drawBitmap(bait.x, bait.y, baitBmp, SNAKE_BLOCK_SIZE, SNAKE_BLOCK_SIZE, TFT_BLACK); //Delete bait
         nTail++;
         initBait();
+        return true;
     }
+    return false;
 }
 
-void drawSnake()
+void drawSnake(bool& ate)
 {
+    if(true)
+    {
+        tft_snake.fillRect(prevTailX, prevTailY, SNAKE_BLOCK_SIZE, SNAKE_BLOCK_SIZE, TFT_BLACK);
+    }
     // 1. CHỌN MẢNG ĐẦU RẮN THEO HƯỚNG
     const uint8_t* currentHeadBmp = headRight; // Mặc định nếu mới vào game
     if (snakeDir == up) currentHeadBmp = headUp;
     else if (snakeDir == down) currentHeadBmp = headDown;
     else if (snakeDir == left) currentHeadBmp = headLeft;
     else if (snakeDir == right) currentHeadBmp = headRight;
+    // 3. VẼ THÂN RẮN BẰNG BITMAP
+    tft_snake.drawBitmap(tailX[0], tailY[0], snakeBody, SNAKE_BLOCK_SIZE, SNAKE_BLOCK_SIZE, TFT_GREEN);
 
     // 2. VẼ ĐẦU RẮN
-    snakeCanvas.drawBitmap(headX, headY, currentHeadBmp, SNAKE_BLOCK_SIZE, SNAKE_BLOCK_SIZE, TFT_DARKGREEN);
+    tft_snake.drawBitmap(headX, headY, currentHeadBmp, SNAKE_BLOCK_SIZE, SNAKE_BLOCK_SIZE, TFT_DARKGREEN);
 
-    // 3. VẼ ĐUÔI RẮN BẰNG BITMAP
-    for(int i = 0; i < nTail - 1; i++)
-    {
-        snakeCanvas.drawBitmap(tailX[i], tailY[i], snakeBody, SNAKE_BLOCK_SIZE, SNAKE_BLOCK_SIZE, TFT_GREEN);
-    }
+
 }
+
+
 void drawBait()
 {
-    snakeCanvas.drawBitmap(bait.x, bait.y, baitBmp, SNAKE_BLOCK_SIZE, SNAKE_BLOCK_SIZE, bait.baitColor);
+    tft_snake.drawBitmap(bait.x, bait.y, baitBmp, SNAKE_BLOCK_SIZE, SNAKE_BLOCK_SIZE, bait.baitColor);
 }
 void drawPlayingUI()
 {
@@ -149,21 +182,25 @@ void drawScore()
     tft_snake.printf("%05d", score); // In 5 chữ số giống Tetris
 }
 
-void renderBoard()
+void renderBoard(bool &ate)
 {
-    snakeCanvas.fillSprite(TFT_BLACK);
-
-    drawSnake(); 
-    drawBait();
-    snakeCanvas.pushSprite(SNAKE_BOARD_OFFSET_X, SNAKE_BOARD_OFFSET_Y);
+    drawSnake(ate);
+    if(ate) 
+        
+        drawBait();
 }
 
 void drawGameOverUI()
 {
-    tft_snake.setTextSize(2); 
-    tft_snake.setTextColor(TFT_WHITE);
-    tft_snake.setCursor(SCREEN_WIDTH/2 - 50, SCREEN_HEIGHT/2);
-    tft_snake.println("GAME OVER");
+    if(!drewGameOverUI)
+    {
+        tft_snake.setTextSize(2); 
+        tft_snake.setTextColor(TFT_WHITE);
+        tft_snake.setCursor(SCREEN_WIDTH/2 - 50, SCREEN_HEIGHT/2);
+        tft_snake.println("GAME OVER");
+        drewGameOverUI = true;
+    }
+
 }
 
 void gameReset()
@@ -177,6 +214,8 @@ void gameReset()
     gameOver = false;
     
     tft_snake.fillScreen(TFT_BLACK);
+    drewGameOverUI = false;
     drawPlayingUI(); // Khởi tạo lại khung UI tĩnh
     initBait();
+    drawBait();
 }

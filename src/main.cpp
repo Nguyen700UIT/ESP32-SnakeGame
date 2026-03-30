@@ -82,17 +82,21 @@ void loop() {
             
             readDirection(); 
             move();         
-            eat();           
+            bool ate = eat();           
             isGameOver();   
-            
-            // Xử lý điểm số
-            score = (nTail - 1) * 10;
-            if (score != prevScore) {
-                drawScore();
-                prevScore = score;
-            }
+            if (!gameOver)
+            {
+              // Xử lý điểm số
+              score = (nTail - 1) * 10;
+              if (score != prevScore)
+              {
+                  drawScore();
+                  prevScore = score;
+              }
 
-            renderBoard();  
+              renderBoard(ate);  
+            } 
+            
         }
     }
     else

@@ -9,6 +9,7 @@ extern unsigned long currTime;
 
 extern int prevScore;
 extern int score;
+extern bool drewGameOverUI;
 
 struct Bait
 {
@@ -16,6 +17,7 @@ struct Bait
     int y;
     uint16_t baitColor;
 };
+
 extern Bait bait;
 extern const uint8_t baitBmp[8] PROGMEM;
 extern const uint8_t headUp[8] PROGMEM;
@@ -27,12 +29,13 @@ extern const uint8_t snakeBody[8] PROGMEM;
 void initBait();
 void readDirection();
 void move();
-void eat();
+bool eat();
 void drawSnake();
+void eraseSnakeTail();
 void drawBait();
 void isGameOver();
 void drawPlayingUI();
 void drawScore();
 void drawGameOverUI();
-void renderBoard();
+void renderBoard(bool& ate);
 void gameReset();
