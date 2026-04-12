@@ -92,6 +92,7 @@ void loop() {
               {
                   drawScore();
                   prevScore = score;
+                  bestScore = max(bestScore, score);
               }
 
               renderBoard(ate);  

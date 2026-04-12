@@ -8,8 +8,4 @@ void initDisplay()
     tft_snake.init();
     tft_snake.setRotation(1);
     tft_snake.fillScreen(TFT_BLACK);
-    
-
-    
-
 }

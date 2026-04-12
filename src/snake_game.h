@@ -10,6 +10,7 @@ extern unsigned long currTime;
 extern int prevScore;
 extern int score;
 extern bool drewGameOverUI;
+extern int bestScore;
 
 struct Bait
 {
@@ -19,12 +20,12 @@ struct Bait
 };
 
 extern Bait bait;
-extern const uint8_t baitBmp[8] PROGMEM;
-extern const uint8_t headUp[8] PROGMEM;
-extern const uint8_t headDown[8] PROGMEM;
-extern const uint8_t headLeft[8] PROGMEM;
-extern const uint8_t headRight[8] PROGMEM;
-extern const uint8_t snakeBody[8] PROGMEM;
+extern const uint16_t baitBmp[] PROGMEM;
+extern const uint16_t headUp[] PROGMEM;
+extern const uint16_t headDown[] PROGMEM;
+extern const uint16_t headLeft[] PROGMEM;
+extern const uint16_t headRight[] PROGMEM;
+extern const uint16_t snakeBody[] PROGMEM;
 
 void initBait();
 void readDirection();

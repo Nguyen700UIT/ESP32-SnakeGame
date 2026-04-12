@@ -9,4 +9,4 @@ int nTail = 1;
 int tailX[100];
 int tailY[100];
 
-const uint16_t baitColor[2] = {TFT_YELLOW, TFT_RED};
+const uint16_t baitColor[2] = {TFT_ORANGE, TFT_RED};
